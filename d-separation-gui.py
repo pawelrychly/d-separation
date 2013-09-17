@@ -7,6 +7,7 @@ import string, time
 import gtkxpm
 from graph import *
 from verticeview import *
+import pickle
 
 
 class SelectionMode:
@@ -67,13 +68,35 @@ class MenuView(gtk.VBox):
 class GraphViewDrawingArea(gtk.DrawingArea):
     def __init__(self, graph):
         super(GraphViewDrawingArea, self).__init__()
-        self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
+        #self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
         self.graph = graph
+        self.edges = self.graph.get_adjacency_matrix()
         self.connect("expose-event", self.expose)
 
 
     def expose(self, widget, event):
         cr = widget.window.cairo_create()
+        cr.set_source_rgb(0.9, 0.3, 0.3)
+
+        print "expose_drawing"
+        for id_from, row in enumerate(self.edges):
+            for id_to, col in enumerate(row):
+                if col == 1:
+                    print "line"
+                    source = self.graph.get_vertice(id_from)
+                    destination = self.graph.get_vertice(id_to)
+                    src_x = source.get_position()['x']
+                    src_y = source.get_position()['y']
+                    dst_x = destination.get_position()['x']
+                    dst_y = destination.get_position()['y']
+                    cr.move_to(0, 0)
+                    cr.save()
+                    cr.move_to(src_x, src_y )
+                    cr.line_to(dst_x, dst_y)
+                    cr.stroke_preserve()
+                    cr.move_to(0, 0)
+                    cr.restore()
+
 
 
 class GraphView(gtk.Window):
@@ -81,9 +104,10 @@ class GraphView(gtk.Window):
     HEIGHT = 400
     WIDTH = 600
     L_WIDTH = 200
-    TARGET_TYPE_PIXMAP = 81
-    fromImage = [ ( "image/x-xpixmap", 0, TARGET_TYPE_PIXMAP ) ]
-    toCanvas = [ ( "image/x-xpixmap", 0, TARGET_TYPE_PIXMAP ) ]
+    TARGET_TYPE_TEXT = 80
+    fromImage = [ ( "text/plain", 0, TARGET_TYPE_TEXT ) ]
+    toCanvas = [ ( "text/plain", 0, TARGET_TYPE_TEXT ) ]
+    selected_edge_vertices = []
 
     def __init__(self, graph):
         super(GraphView, self).__init__()
@@ -110,15 +134,19 @@ class GraphView(gtk.Window):
         self.graph.delete_vertice(id)
         self.queue_draw()
 
-    def addVertice(self, xd, yd):
+    def addVertice(self, xd, yd, vertice = None):
         hadj = self.layout.get_hadjustment()
         vadj = self.layout.get_vadjustment()
-        vertice = Vertice(int(xd+hadj.value), int(yd+vadj.value))
-        self.graph.add_vertice(vertice)
+        if vertice == None:
+            vertice = Vertice(int(xd+hadj.value), int(yd+vadj.value))
+            self.graph.add_vertice(vertice)
+        else:
+            vertice.set_position(int(xd+hadj.value), int(yd+vadj.value))
+
         vertice_event_box = VerticeEventBox(vertice)
         vertice_event_box.connect("drag_data_get", self.sendCallback)
         vertice_event_box.drag_source_set(gtk.gdk.BUTTON1_MASK, self.fromImage,
-                               gtk.gdk.ACTION_COPY)
+                               gtk.gdk.ACTION_MOVE)
         vertice_event_box.set_events(gtk.gdk.BUTTON_PRESS_MASK)
         vertice_event_box.connect("button_press_event", self.button_vertice_press_event)
 
@@ -129,36 +157,20 @@ class GraphView(gtk.Window):
         self.queue_draw()
         return
 
-
-    def addImage(self, xpm, xd, yd):
-        hadj = self.layout.get_hadjustment()
-        vadj = self.layout.get_vadjustment()
-        style = self.get_style()
-        pixmap, mask = gtk.gdk.pixmap_create_from_xpm_d(
-            self.window, style.bg[gtk.STATE_NORMAL], xpm)
-        image = gtk.Image()
-        image.set_from_pixmap(pixmap, mask)
-        button = gtk.EventBox()
-        button.add(image)
-        button.connect_after("drag_data_get", self.sendCallback)
-        button.drag_source_set(gtk.gdk.BUTTON1_MASK, self.fromImage,
-                               gtk.gdk.ACTION_COPY)
-        button.show_all()
-        # have to adjust for the scrolling of the layout - event location
-        # is relative to the viewable not the layout size
-        self.layout.put(button, int(xd+hadj.value), int(yd+vadj.value))
-        return
-
     def sendCallback(self, widget, context, selection, targetType, eventTime):
-        if targetType == self.TARGET_TYPE_PIXMAP:
-            selection.set(selection.target, 8,
-                          string.join(gtkxpm.gtk_xpm, '\n'))
+        vertice_id = str(widget.child.vertice.get_id())
+
+        if targetType == self.TARGET_TYPE_TEXT:
+            selection.set(selection.target, 8, vertice_id)
+            widget.destroy()
+
 
     def receiveCallback(self, widget, context, x, y, selection, targetType,
                         time):
-        if targetType == self.TARGET_TYPE_PIXMAP:
-            #self.addImage(string.split(selection.data, '\n'), x, y)
-            self.addVertice(x,y)
+        if targetType == self.TARGET_TYPE_TEXT:
+            vertice_id = int(selection.data)
+            vertice = self.graph.get_vertice(vertice_id)
+            self.addVertice(x,y, vertice)
 
     def makeLayout(self):
         self.lwidth = self.L_WIDTH
@@ -177,6 +189,7 @@ class GraphView(gtk.Window):
         layout.set_size(self.WIDTH, self.HEIGHT)
         layout.connect("size-allocate", self.layout_resize)
         drawing_area = GraphViewDrawingArea(self.graph)
+        drawing_area.set_size_request(self.WIDTH, self.HEIGHT)
         drawing_area.show()
         layout.add(drawing_area)
         layout.show()
@@ -203,20 +216,11 @@ class GraphView(gtk.Window):
         layout.drag_dest_set(gtk.DEST_DEFAULT_MOTION |
                                   gtk.DEST_DEFAULT_HIGHLIGHT |
                                   gtk.DEST_DEFAULT_DROP,
-                                  self.toCanvas, gtk.gdk.ACTION_COPY)
+                                  self.toCanvas, gtk.gdk.ACTION_MOVE)
 
 
         return box
-        #self.addImage(gtkxpm.gtk_xpm, 0, 0)
-        #button = gtk.Button("Text Target")
-        #button.show()
-        #button.connect("drag_data_received", self.receiveCallback)
-        #button.drag_dest_set(gtk.DEST_DEFAULT_MOTION |
-        #                     gtk.DEST_DEFAULT_HIGHLIGHT |
-        #                     gtk.DEST_DEFAULT_DROP,
-        #                     self.toButton, gtk.gdk.ACTION_COPY)
-        #box.pack_start(button, False, False, 0)
-        #return box
+
     def button_graph_area_press_event(self, widget, event):
         print "graph area clicked"
         if widget.name != "graph_area":
@@ -225,7 +229,9 @@ class GraphView(gtk.Window):
             if event.button == 1:
                 #self.addImage(gtkxpm.gtk_xpm, event.x, event.y)
                 self.addVertice(event.x, event.y)
-
+        elif self.menu_box.get_state() == SelectionMode.adding_removing_edges:
+            del self.selected_edge_vertices[:]
+            self.graph.set_all_vertices_unselected()
 
         return True
 
@@ -234,6 +240,24 @@ class GraphView(gtk.Window):
         if self.menu_box.get_state() == SelectionMode.adding_removing_vertices:
             if event.button == 3:
                 self.removeVertice(widget, widget.child.vertice.get_id())
+        elif self.menu_box.get_state() == SelectionMode.adding_removing_edges:
+            widget.child.vertice.set_state(StateOfVertice.selected)
+            self.queue_draw()
+            if len(self.selected_edge_vertices) == 1:
+                self.selected_edge_vertices.append(widget.child.vertice.get_id())
+                if event.button == 1:
+                    self.graph.add_edge(self.selected_edge_vertices[0], self.selected_edge_vertices[1])
+                elif event.button == 3:
+                    self.graph.delete_edge(self.selected_edge_vertices[0], self.selected_edge_vertices[1])
+                del self.selected_edge_vertices[:]
+                self.graph.set_all_vertices_unselected()
+
+            else:
+                self.selected_edge_vertices.append(widget.child.vertice.get_id())
+
+
+
+
         return True
         #if widget.name != "graph_area":
         #    return

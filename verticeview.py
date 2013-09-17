@@ -6,7 +6,7 @@ import gtk
 import string, time
 import gtkxpm
 import math
-import graph
+from graph import *
 
 class VerticeEventBox(gtk.EventBox):
 
@@ -31,8 +31,16 @@ class VerticeView(gtk.DrawingArea):
 
         cr.set_line_width(4)
         #cr.set_source_rgb(0.7, 0.2, 0.0)
-        cr.set_source_rgb(0.7, 0.7, 0.7)
-
+        if self.vertice.get_state() == StateOfVertice.selected:
+            cr.set_source_rgb(0.9, 0.3, 0.3)
+        elif self.vertice.get_state() == StateOfVertice.selectedx:
+            cr.set_source_rgb(0.7, 0.7, 0.3)
+        elif self.vertice.get_state() == StateOfVertice.selectedy:
+            cr.set_source_rgb(0.3, 0.3, 0.9)
+        elif self.vertice.get_state() == StateOfVertice.selectedz:
+            cr.set_source_rgb(0.3, 0.9, 0.3)
+        else:
+            cr.set_source_rgb(0.7, 0.7, 0.7)
 
         w = self.allocation.width
         h = self.allocation.height
@@ -47,6 +55,7 @@ class VerticeView(gtk.DrawingArea):
         cr.stroke_preserve()
         #cr.set_source_rgb(0.7, 0.2, 0.0)
         cr.set_source_rgb(0.7, 0.6, 0.6)
+        cr.translate(-w/6, h/7)
         cr.show_text(str(self.vertice.get_id()))
 
 
