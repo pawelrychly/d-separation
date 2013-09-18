@@ -4,7 +4,6 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 import string, time
-import gtkxpm
 import math
 from graph import *
 
@@ -13,6 +12,7 @@ class VerticeEventBox(gtk.EventBox):
     def __init__(self, vertice):
         super(VerticeEventBox, self).__init__()
         vertice_view = VerticeView(vertice)
+        #self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(65000, 65000, 65000))
         vertice_view.show()
         self.set_size_request(25,25)
         self.add(vertice_view)
@@ -31,14 +31,8 @@ class VerticeView(gtk.DrawingArea):
 
         cr.set_line_width(4)
         #cr.set_source_rgb(0.7, 0.2, 0.0)
-        if self.vertice.get_state() == StateOfVertice.selected:
+        if self.vertice.get_selection_state() == StateOfVerticeSelection.selected:
             cr.set_source_rgb(0.9, 0.3, 0.3)
-        elif self.vertice.get_state() == StateOfVertice.selectedx:
-            cr.set_source_rgb(0.7, 0.7, 0.3)
-        elif self.vertice.get_state() == StateOfVertice.selectedy:
-            cr.set_source_rgb(0.3, 0.3, 0.9)
-        elif self.vertice.get_state() == StateOfVertice.selectedz:
-            cr.set_source_rgb(0.3, 0.9, 0.3)
         else:
             cr.set_source_rgb(0.7, 0.7, 0.7)
 
@@ -50,11 +44,19 @@ class VerticeView(gtk.DrawingArea):
         cr.stroke_preserve()
 
         #cr.set_source_rgb(0.3, 0.4, 0.6)
-        cr.set_source_rgb(1.0, 1.0, 1.0)
+        if self.vertice.get_selected_set_state() == StateOfSetSelection.selectedx:
+            cr.set_source_rgb(0.9, 0.9, 0.3)
+        elif self.vertice.get_selected_set_state() == StateOfSetSelection.selectedy:
+            cr.set_source_rgb(0.7, 0.7, 1)
+        elif self.vertice.get_selected_set_state() == StateOfSetSelection.selectedz:
+            cr.set_source_rgb(0.3, 0.9, 0.3)
+        else:
+            cr.set_source_rgb(1.0, 1.0, 1.0)
+
         cr.fill()
         cr.stroke_preserve()
         #cr.set_source_rgb(0.7, 0.2, 0.0)
-        cr.set_source_rgb(0.7, 0.6, 0.6)
+        cr.set_source_rgb(0.0, 0.0, 0.0)
         cr.translate(-w/6, h/7)
         cr.show_text(str(self.vertice.get_id()))
 

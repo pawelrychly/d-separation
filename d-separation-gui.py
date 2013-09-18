@@ -4,7 +4,6 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 import string, time
-import gtkxpm
 from graph import *
 from verticeview import *
 import pickle
@@ -12,54 +11,106 @@ import pickle
 
 class SelectionMode:
     adding_removing_vertices = 0
-    moving_vertices = 1
-    adding_removing_edges = 2
-    selecting_x = 3
-    selecting_y = 4
-    selecting_z = 5
+    adding_removing_edges = 1
+    selecting_x = 2
+    selecting_y = 3
+    selecting_z = 4
 
 class MenuView(gtk.VBox):
     __state = SelectionMode.adding_removing_vertices
-    def __init__(self):
+    def __init__(self, graph, label):
+        self.graph = graph
+        self.label = label
+        self.tooltips = gtk.Tooltips()
         super(MenuView, self).__init__(self)
+
         first_button = gtk.RadioButton(None, "Adding / Removing vertices")
         first_button.connect("toggled", self.radio_button_callback, SelectionMode.adding_removing_vertices)
         self.pack_start(first_button, gtk.TRUE, gtk.TRUE, 0)
         first_button.show()
+        self.tooltips.set_tip(first_button, "W tym trybie, mozliwe jest dodawanie lub usuwanie wierzcholkow grafu, przy pomocy odpowienio: lewego i prawego przycisku myszy.")
 
-        button = gtk.RadioButton(first_button, "Moving vertices")
-        button.connect("toggled", self.radio_button_callback, SelectionMode.moving_vertices)
-        self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
-        button.show()
 
         button = gtk.RadioButton(first_button, "Adding / Removing edges")
         button.connect("toggled", self.radio_button_callback, SelectionMode.adding_removing_edges)
         self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
         button.show()
+        self.tooltips.set_tip(button, "W tym trybie, mozliwe jest dodawanie lub usuwanie krawedzi grafu. Aby dodac krawedz z wierzcholka A do B nalezy zaznaczyc wierzcholek A, a nastepnie wierzcholek B. Usuwanie krawedzi, realizowane jest w sposob analogiczny przy pomocy prawego przycisku myszy.")
 
-        button = gtk.RadioButton(first_button, "Selecting Z")
-        button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_z)
-        self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
-        button.show()
 
-        button = gtk.RadioButton(first_button, "Selecting Y")
-        button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_y)
-        self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
-        button.show()
-
-        button = gtk.RadioButton(first_button, "Selecting X")
+        button = gtk.RadioButton(first_button, "Selecting X set \t\t   ")
         button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_x)
-        self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
-        button.show()
+        hbox = gtk.HBox(False, 30)
+        pic = gtk.DrawingArea()
+        pic.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(59000, 59000 , 19500))
+        hbox.pack_start(button)
+        hbox.pack_start(pic)
 
-        button = gtk.Button("Start")
+        self.pack_start(hbox, gtk.TRUE, gtk.TRUE, 0)
+        button.show()
+        hbox.show()
+        self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru X. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
+
+
+        button = gtk.RadioButton(first_button, "Selecting Y Set \t\t\t  ")
+        button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_y)
+
+        hbox = gtk.HBox(False, 30)
+        pic = gtk.DrawingArea()
+        pic.set_size_request(20,20)
+        pic.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(45500, 45500 , 65000))
+        hbox.pack_start(button)
+        hbox.pack_start(pic)
+
+        self.pack_start(hbox, gtk.TRUE, gtk.TRUE, 0)
+        button.show()
+        hbox.show()
+        self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru Y. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
+
+
+        button = gtk.RadioButton(first_button, "Selecting  Z - Condition Set")
+        button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_z)
+        hbox = gtk.HBox(False, 30)
+        pic = gtk.DrawingArea()
+        pic.set_size_request(20,20)
+        pic.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(19500, 59000 , 19500))
+        hbox.pack_start(button)
+        hbox.pack_start(pic)
+
+        self.pack_start(hbox, gtk.TRUE, gtk.TRUE, 0)
+        button.show()
+        hbox.show()
+
+        self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru Z. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
+
+
+        button = gtk.Button("X d-sep Y ?")
+        button.connect("clicked", self.check_d_separation, None)
         self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
         button.show()
+        self.tooltips.set_tip(button, "Uruchomienie algorytmu.")
+
+
+        #self.label = gtk.Label("")
+        #self.label.show()
+        #self.pack_start(self.label, gtk.TRUE, gtk.TRUE, 0)
+
+
+    def check_d_separation(self, widget, data=None):
+        print "D-separation"
+        self.graph.print_graph()
+        d_sep = self.graph.check_d_separation()
+        if d_sep == True:
+            self.label.set_text("X d-separated Y \n X jest niezalezny warunkowo od Y pod warunkiem Z  ")
+        else:
+            self.label.set_text("X d-connected Y \n X jest zalezny warunkowo od Y pod warunkiem Z  ")
+
 
     def get_state(self):
         return self.__state
 
     def radio_button_callback(self, widget, data=None):
+        self.graph.set_all_vertices_unselected()
         if widget.get_active():
             self.__state = data
             print self.__state
@@ -68,34 +119,81 @@ class MenuView(gtk.VBox):
 class GraphViewDrawingArea(gtk.DrawingArea):
     def __init__(self, graph):
         super(GraphViewDrawingArea, self).__init__()
-        #self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
+        #self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(65000, 65000, 65000))
         self.graph = graph
         self.edges = self.graph.get_adjacency_matrix()
         self.connect("expose-event", self.expose)
 
 
+    def _draw_direction_arrow(self, cr, from_position, to_position):
+        diff_x = from_position['x'] - to_position['x']
+        diff_y = from_position['y'] - to_position['y']
+        value = 0
+        angle = 0.0
+        #if diff_x <= 30.0 and diff_x >= -30.0:
+        #    d_x = 0.0
+        #    if (diff_x * diff_y) > 0:
+        #        d_y = 15
+        #    else:
+        #        d_y = -15
+        if diff_x == 0.0:
+            diff_x = 0.000001
+        tangens = float(diff_y) / float(diff_x)
+        angle = math.atan(tangens)
+        d_x = math.sqrt(25.0**2 / (1 + tangens**2))
+        #d_x = 15.0
+        d_y = tangens * d_x
+
+        if diff_x >= 0.0: value = 1.0
+        else: value = -1.0
+
+        to_position = {
+            'x': to_position['x'] + (value * d_x),
+            'y': to_position['y'] + (value * d_y)
+        }
+        src_x = from_position['x']
+        src_y = from_position['y']
+        dst_x = to_position['x']
+        dst_y = to_position['y']
+        cr.move_to(0, 0)
+        cr.save()
+        cr.move_to(src_x, src_y )
+        cr.line_to(dst_x, dst_y)
+
+        arrow_x1 = (math.cos(math.pi/8 + angle) * 15)
+        arrow_y1 = (math.sin(math.pi/8 + angle) * 15)
+        arrow_x2 = (math.cos(-1.0 * math.pi/8 + angle) * 15)
+        arrow_y2 = (math.sin(-1.0 * math.pi/8 + angle) * 15)
+        cr.line_to(dst_x + value * arrow_x1, dst_y + value * arrow_y1);
+        cr.move_to(dst_x, dst_y)
+        cr.line_to(dst_x + value * arrow_x2, dst_y + value * arrow_y2);
+        cr.move_to(dst_x, dst_y)
+        cr.move_to(0, 0)
+        cr.stroke_preserve()
+        cr.restore()
+
     def expose(self, widget, event):
         cr = widget.window.cairo_create()
-        cr.set_source_rgb(0.9, 0.3, 0.3)
+        cr.set_line_width(1.0)
+        cr.set_source_rgb(0.0, 0.0, 0.0)
 
-        print "expose_drawing"
         for id_from, row in enumerate(self.edges):
             for id_to, col in enumerate(row):
                 if col == 1:
-                    print "line"
                     source = self.graph.get_vertice(id_from)
                     destination = self.graph.get_vertice(id_to)
-                    src_x = source.get_position()['x']
-                    src_y = source.get_position()['y']
-                    dst_x = destination.get_position()['x']
-                    dst_y = destination.get_position()['y']
-                    cr.move_to(0, 0)
-                    cr.save()
-                    cr.move_to(src_x, src_y )
-                    cr.line_to(dst_x, dst_y)
-                    cr.stroke_preserve()
-                    cr.move_to(0, 0)
-                    cr.restore()
+                    self._draw_direction_arrow(cr, source.get_position(), destination.get_position())
+                    #src_x = source.get_position()['x']
+                    #src_y = source.get_position()['y']
+                    #dst_x = destination.get_position()['x']
+                    #dst_y = destination.get_position()['y']
+                    #cr.move_to(0, 0)
+                    #cr.save()
+                    #cr.move_to(src_x, src_y )
+                    #cr.line_to(dst_x, dst_y)
+                    #cr.stroke_preserve()
+                    #cr.move_to(0, 0)
+                    #cr.restore()
 
 
 
@@ -109,17 +207,29 @@ class GraphView(gtk.Window):
     toCanvas = [ ( "text/plain", 0, TARGET_TYPE_TEXT ) ]
     selected_edge_vertices = []
 
+
     def __init__(self, graph):
         super(GraphView, self).__init__()
         self.graph = graph
-        self.menu_box = MenuView()
+        labelframe = gtk.Frame("Results")
+        self.label = gtk.Label("")
+        self.label.set_justify(gtk.JUSTIFY_LEFT)
+        labelframe.add(self.label)
+
+
+
+        self.menu_box = MenuView(graph, self.label)
         self.menu_box.show()
         self.set_title('D-Separation')
-        self.set_size_request(self.WIDTH + 250, self.HEIGHT)
+        self.set_size_request(self.WIDTH + 270, self.HEIGHT + 100)
         self.set_position(gtk.WIN_POS_CENTER)
         self.connect("destroy", lambda w: gtk.main_quit())
         layout = self.makeLayout()
-        self.add(layout)
+        mainbox = gtk.VBox(False,0)
+        mainbox.show()
+        mainbox.pack_start(layout)
+        mainbox.pack_start(labelframe, gtk.TRUE, gtk.TRUE, 5)
+        self.add(mainbox)
         self.show_all()
 
     def layout_resize(self, widget, event):
@@ -153,7 +263,7 @@ class GraphView(gtk.Window):
         vertice_event_box.show_all()
         # have to adjust for the scrolling of the layout - event location
         # is relative to the viewable not the layout size
-        self.layout.put(vertice_event_box, int(xd+hadj.value), int(yd+vadj.value))
+        self.layout.put(vertice_event_box, int(xd+hadj.value-12), int(yd+vadj.value-12))
         self.queue_draw()
         return
 
@@ -175,7 +285,7 @@ class GraphView(gtk.Window):
     def makeLayout(self):
         self.lwidth = self.L_WIDTH
         self.lheight = self.HEIGHT
-        box = gtk.HBox(False,0)
+        box = gtk.HBox(False,20)
         box.show()
         box.pack_start(self.menu_box)
         table = gtk.Table(2, 2, False)
@@ -222,7 +332,6 @@ class GraphView(gtk.Window):
         return box
 
     def button_graph_area_press_event(self, widget, event):
-        print "graph area clicked"
         if widget.name != "graph_area":
             return
         if self.menu_box.get_state() == SelectionMode.adding_removing_vertices:
@@ -232,16 +341,15 @@ class GraphView(gtk.Window):
         elif self.menu_box.get_state() == SelectionMode.adding_removing_edges:
             del self.selected_edge_vertices[:]
             self.graph.set_all_vertices_unselected()
-
+            self.queue_draw()
         return True
 
     def button_vertice_press_event(self, widget, event):
-        print "clicked"
         if self.menu_box.get_state() == SelectionMode.adding_removing_vertices:
             if event.button == 3:
                 self.removeVertice(widget, widget.child.vertice.get_id())
         elif self.menu_box.get_state() == SelectionMode.adding_removing_edges:
-            widget.child.vertice.set_state(StateOfVertice.selected)
+            widget.child.vertice.set_selection_state(StateOfVerticeSelection.selected)
             self.queue_draw()
             if len(self.selected_edge_vertices) == 1:
                 self.selected_edge_vertices.append(widget.child.vertice.get_id())
@@ -254,6 +362,40 @@ class GraphView(gtk.Window):
 
             else:
                 self.selected_edge_vertices.append(widget.child.vertice.get_id())
+        elif self.menu_box.get_state() == SelectionMode.selecting_x:
+
+            if event.button == 1:
+                print "selecting x"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.selectedx)
+                self.graph.add_vertice_to_x_set(widget.child.vertice.get_id())
+            elif event.button == 3 and widget.child.vertice.get_selected_set_state() == StateOfSetSelection.selectedx:
+                print "unselecting x"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.unselected)
+                self.graph.remove_vertice_from_x_set(widget.child.vertice.get_id())
+            self.queue_draw()
+
+        elif self.menu_box.get_state() == SelectionMode.selecting_y:
+            if event.button == 1:
+                print "selecting y"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.selectedy)
+                self.graph.add_vertice_to_y_set(widget.child.vertice.get_id())
+            elif event.button == 3 and widget.child.vertice.get_selected_set_state() == StateOfSetSelection.selectedy:
+                print "unselecting y"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.unselected)
+                self.graph.remove_vertice_from_y_set(widget.child.vertice.get_id())
+            self.queue_draw()
+        elif self.menu_box.get_state() == SelectionMode.selecting_z:
+            if event.button == 1:
+                print "selecting z"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.selectedz)
+                self.graph.add_vertice_to_z_set(widget.child.vertice.get_id())
+            elif event.button == 3 and widget.child.vertice.get_selected_set_state() == StateOfSetSelection.selectedz:
+                print "unselecting z"
+                widget.child.vertice.set_selected_set_state(StateOfSetSelection.unselected)
+                self.graph.remove_vertice_from_z_set(widget.child.vertice.get_id())
+            self.queue_draw()
+
+
 
 
 
