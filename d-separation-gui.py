@@ -18,6 +18,14 @@ class SelectionMode:
 
 class MenuView(gtk.VBox):
     __state = SelectionMode.adding_removing_vertices
+
+    __state_names = {
+        '0': "Adding / Removing vertices",
+        '1': "Adding / Removing edges",
+        '2': "Selecting X",
+        '3': "Selecting Y",
+        '4': "Selecting Z",
+    }
     def __init__(self, graph, label):
         self.graph = graph
         self.label = label
@@ -111,8 +119,10 @@ class MenuView(gtk.VBox):
 
     def radio_button_callback(self, widget, data=None):
         self.graph.set_all_vertices_unselected()
+        self.label.set_text("")
         if widget.get_active():
             self.__state = data
+            self.label.set_text("Current state: " + self.__state_names[str(self.__state)])
             print self.__state
 
 
@@ -211,7 +221,7 @@ class GraphView(gtk.Window):
     def __init__(self, graph):
         super(GraphView, self).__init__()
         self.graph = graph
-        labelframe = gtk.Frame("Results")
+        labelframe = gtk.Frame("Messages")
         self.label = gtk.Label("")
         self.label.set_justify(gtk.JUSTIFY_LEFT)
         labelframe.add(self.label)
