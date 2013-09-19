@@ -20,33 +20,40 @@ class MenuView(gtk.VBox):
     __state = SelectionMode.adding_removing_vertices
 
     __state_names = {
-        '0': "Adding / Removing vertices",
-        '1': "Adding / Removing edges",
-        '2': "Selecting X",
-        '3': "Selecting Y",
-        '4': "Selecting Z",
+        '0': "Dodawanie / Usuwanie wierzcholkow",
+        '1': "Dodawanie / Usuwanie krawedzi",
+        '2': "Zaznaczanie zbioru X",
+        '3': "Zaznaczanie zbioru Y",
+        '4': "Zaznaczanie zbioru warunkowego Z",
     }
-    def __init__(self, graph, label):
+    def __init__(self, graph, label, graph_view):
         self.graph = graph
         self.label = label
+        self.graph_view = graph_view
         self.tooltips = gtk.Tooltips()
         super(MenuView, self).__init__(self)
 
-        first_button = gtk.RadioButton(None, "Adding / Removing vertices")
+        button = gtk.Button("Wyczysc graf")
+        button.connect("clicked", self.reset_graph, None)
+        self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
+        button.show()
+        self.tooltips.set_tip(button, "Wyczyszczenie grafu.")
+
+        first_button = gtk.RadioButton(None, "Dodawanie / Usuwanie wierzcholkow")
         first_button.connect("toggled", self.radio_button_callback, SelectionMode.adding_removing_vertices)
         self.pack_start(first_button, gtk.TRUE, gtk.TRUE, 0)
         first_button.show()
-        self.tooltips.set_tip(first_button, "W tym trybie, mozliwe jest dodawanie lub usuwanie wierzcholkow grafu, przy pomocy odpowienio: lewego i prawego przycisku myszy.")
+        self.tooltips.set_tip(first_button, "W tym trybie, mozliwe jest dodawanie lub usuwanie wierzcholkow grafu, za pomoca odpowienio: lewego i prawego przycisku myszy.")
 
 
-        button = gtk.RadioButton(first_button, "Adding / Removing edges")
+        button = gtk.RadioButton(first_button, "Dodawanie / Usuwanie krawedzi")
         button.connect("toggled", self.radio_button_callback, SelectionMode.adding_removing_edges)
         self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
         button.show()
-        self.tooltips.set_tip(button, "W tym trybie, mozliwe jest dodawanie lub usuwanie krawedzi grafu. Aby dodac krawedz z wierzcholka A do B nalezy zaznaczyc wierzcholek A, a nastepnie wierzcholek B. Usuwanie krawedzi, realizowane jest w sposob analogiczny przy pomocy prawego przycisku myszy.")
+        self.tooltips.set_tip(button, "W tym trybie, mozliwe jest dodawanie lub usuwanie krawedzi grafu. Aby dodac krawedz z wierzcholka A do B nalezy zaznaczyc wierzcholek A, a nastepnie wierzcholek B. Usuwanie krawedzi, realizowane jest w sposob analogiczny za pomoca prawego przycisku myszy.")
 
 
-        button = gtk.RadioButton(first_button, "Selecting X set \t\t   ")
+        button = gtk.RadioButton(first_button, "Zaznaczanie zbioru X \t\t\t  ")
         button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_x)
         hbox = gtk.HBox(False, 30)
         pic = gtk.DrawingArea()
@@ -60,7 +67,7 @@ class MenuView(gtk.VBox):
         self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru X. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
 
 
-        button = gtk.RadioButton(first_button, "Selecting Y Set \t\t\t  ")
+        button = gtk.RadioButton(first_button, "Zaznaczanie zbioru Y \t\t\t\t  ")
         button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_y)
 
         hbox = gtk.HBox(False, 30)
@@ -76,7 +83,7 @@ class MenuView(gtk.VBox):
         self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru Y. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
 
 
-        button = gtk.RadioButton(first_button, "Selecting  Z - Condition Set")
+        button = gtk.RadioButton(first_button, "Zaznaczanie zbioru warunkowego Z  ")
         button.connect("toggled", self.radio_button_callback, SelectionMode.selecting_z)
         hbox = gtk.HBox(False, 30)
         pic = gtk.DrawingArea()
@@ -92,11 +99,12 @@ class MenuView(gtk.VBox):
         self.tooltips.set_tip(button, "W tym trybie realizowane jest zaznaczanie wierzcholkow nalezacych do zbioru Z. Zaznaczanie wierzcholkow - Lewy przycisk myszy. Odznaczanie wierzcholkow - prawy przycisk myszy.")
 
 
-        button = gtk.Button("X d-sep Y ?")
+        button = gtk.Button("Uruchom algorytm")
         button.connect("clicked", self.check_d_separation, None)
         self.pack_start(button, gtk.TRUE, gtk.TRUE, 0)
         button.show()
         self.tooltips.set_tip(button, "Uruchomienie algorytmu.")
+
 
 
         #self.label = gtk.Label("")
@@ -105,14 +113,20 @@ class MenuView(gtk.VBox):
 
 
     def check_d_separation(self, widget, data=None):
-        print "D-separation"
         self.graph.print_graph()
-        d_sep = self.graph.check_d_separation()
-        if d_sep == True:
-            self.label.set_text("X d-separated Y \n X jest niezalezny warunkowo od Y pod warunkiem Z  ")
+        if self.graph.validate_sets():
+            d_sep = self.graph.check_d_separation()
+            if d_sep == True:
+                self.label.set_text("Zbior wierzcholkow X jest niezalezny warunkowo od zbioru wierzcholkow Y pod warunkiem wierzcholkow ze zbioru Z.")
+            else:
+                self.label.set_text("Zbior wierzcholkow X jest zalezny warunkowo od zbioru wierzcholkow Y pod warunkiem wierzcholkow ze zbioru Z  ")
         else:
-            self.label.set_text("X d-connected Y \n X jest zalezny warunkowo od Y")
+            self.label.set_text("Wynik nieokreslony. Zbior X lub Y jest pusty.")
 
+    def reset_graph(self, widget, data=None):
+        self.graph.reset_graph()
+        self.graph_view.reset_graph_area()
+        self.graph_view.layout.queue_draw()
 
     def get_state(self):
         return self.__state
@@ -122,8 +136,9 @@ class MenuView(gtk.VBox):
         self.label.set_text("")
         if widget.get_active():
             self.__state = data
-            self.label.set_text("Current state: " + self.__state_names[str(self.__state)])
+            self.label.set_text("Aktualny tryb: " + self.__state_names[str(self.__state)])
             print self.__state
+        self.graph_view.queue_draw()
 
 
 class GraphViewDrawingArea(gtk.DrawingArea):
@@ -221,17 +236,13 @@ class GraphView(gtk.Window):
     def __init__(self, graph):
         super(GraphView, self).__init__()
         self.graph = graph
-        labelframe = gtk.Frame("Messages")
+        labelframe = gtk.Frame("")
         self.label = gtk.Label("")
         self.label.set_justify(gtk.JUSTIFY_LEFT)
         labelframe.add(self.label)
 
-
-
-        self.menu_box = MenuView(graph, self.label)
-        self.menu_box.show()
-        self.set_title('D-Separation')
-        self.set_size_request(self.WIDTH + 270, self.HEIGHT + 100)
+        self.set_title('D-Separacja')
+        self.set_size_request(self.WIDTH + 320, self.HEIGHT + 100)
         self.set_position(gtk.WIN_POS_CENTER)
         self.connect("destroy", lambda w: gtk.main_quit())
         layout = self.makeLayout()
@@ -295,6 +306,10 @@ class GraphView(gtk.Window):
     def makeLayout(self):
         self.lwidth = self.L_WIDTH
         self.lheight = self.HEIGHT
+
+        layout = self.prepare_graph_area()
+        self.menu_box = MenuView(self.graph, self.label, self)
+        self.menu_box.show()
         box = gtk.HBox(False,20)
         box.show()
         box.pack_start(self.menu_box)
@@ -303,16 +318,8 @@ class GraphView(gtk.Window):
         table.show()
 
         box.pack_start(table, True, True, 0)
-        layout = gtk.Layout()
-        layout.set_name("graph_area")
+
         self.layout = layout
-        layout.set_size(self.WIDTH, self.HEIGHT)
-        layout.connect("size-allocate", self.layout_resize)
-        drawing_area = GraphViewDrawingArea(self.graph)
-        drawing_area.set_size_request(self.WIDTH, self.HEIGHT)
-        drawing_area.show()
-        layout.add(drawing_area)
-        layout.show()
         table.attach(layout, 0, 1, 0, 1, gtk.FILL|gtk.EXPAND,
                      gtk.FILL|gtk.EXPAND, 0, 0)
         # create the scrollbars and pack into the table
@@ -330,6 +337,30 @@ class GraphView(gtk.Window):
         vScrollbar.set_adjustment(vAdjust)
         hAdjust = layout.get_hadjustment()
         hScrollbar.set_adjustment(hAdjust)
+
+
+        return box
+
+    def reset_graph_area(self):
+        #self.layout = self.prepare_graph_area()
+        childs = self.layout.get_children()
+        for child in childs:
+            if child.__class__.__name__ == 'VerticeEventBox':
+                child.destroy()
+
+        self.layout.queue_draw()
+        return
+
+    def prepare_graph_area(self):
+        layout = gtk.Layout()
+        layout.set_size(self.WIDTH, self.HEIGHT)
+        layout.connect("size-allocate", self.layout_resize)
+        drawing_area = GraphViewDrawingArea(self.graph)
+        drawing_area.set_size_request(self.WIDTH, self.HEIGHT)
+        drawing_area.show()
+        layout.add(drawing_area)
+
+        layout.set_name("graph_area")
         layout.set_events(gtk.gdk.BUTTON_PRESS_MASK)
         layout.connect("button_press_event", self.button_graph_area_press_event)
         layout.connect("drag_data_received", self.receiveCallback)
@@ -337,9 +368,9 @@ class GraphView(gtk.Window):
                                   gtk.DEST_DEFAULT_HIGHLIGHT |
                                   gtk.DEST_DEFAULT_DROP,
                                   self.toCanvas, gtk.gdk.ACTION_MOVE)
+        layout.show()
+        return layout
 
-
-        return box
 
     def button_graph_area_press_event(self, widget, event):
         if widget.name != "graph_area":
@@ -364,7 +395,10 @@ class GraphView(gtk.Window):
             if len(self.selected_edge_vertices) == 1:
                 self.selected_edge_vertices.append(widget.child.vertice.get_id())
                 if event.button == 1:
-                    self.graph.add_edge(self.selected_edge_vertices[0], self.selected_edge_vertices[1])
+                    if not self.graph.add_edge(self.selected_edge_vertices[0], self.selected_edge_vertices[1]):
+                        self.label.set_text("Nie mozna utworzyc krawedzi. Siec bayesowska musi byc skierowanym acyklicznym grafem.")
+                    else:
+                        self.label.set_text("Utworzono krawedz")
                 elif event.button == 3:
                     self.graph.delete_edge(self.selected_edge_vertices[0], self.selected_edge_vertices[1])
                 del self.selected_edge_vertices[:]
@@ -404,8 +438,6 @@ class GraphView(gtk.Window):
                 widget.child.vertice.set_selected_set_state(StateOfSetSelection.unselected)
                 self.graph.remove_vertice_from_z_set(widget.child.vertice.get_id())
             self.queue_draw()
-
-
 
 
 

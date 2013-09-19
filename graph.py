@@ -1,5 +1,7 @@
 __author__ = 'pawel'
 
+import copy
+
 class StateOfVerticeSelection:
     unselected = 0
     selected = 1
@@ -63,6 +65,14 @@ class Graph:
     def __init__(self):
         return
 
+    def reset_graph(self):
+        while len(self.__vertices) > 0:
+            self.delete_vertice(0)
+        del self.__adjacency_matrix[:]
+        self.reset_all_sets()
+        self.print_graph()
+
+
     def add_vertice(self, vertice):
         self.__vertices.append(vertice)
         if len(self.__adjacency_matrix) > 0:
@@ -88,9 +98,16 @@ class Graph:
     def get_vertice(self, id):
         return self.__vertices[id]
 
+
     def add_edge(self, from_id, to_id):
-        self.__adjacency_matrix[from_id][to_id] = 1
-        self.print_graph()
+        matrix = copy.deepcopy(self.__adjacency_matrix)
+        matrix[from_id][to_id] = 1
+        if self.is_acyclic_graph(matrix):
+            self.__adjacency_matrix[from_id][to_id] = 1
+            self.print_graph()
+            return True
+        else:
+            return False
 
     def delete_edge(self, from_id, to_id):
         self.__adjacency_matrix[from_id][to_id] = 0
@@ -178,6 +195,12 @@ class Graph:
             print 'wrong id'
         self.print_graph()
 
+    def validate_sets(self):
+        if len(self.__x_set) == 0 or len(self.__y_set) == 0:
+            return False
+        else:
+            return True
+
     def check_d_separation(self):
         for x in self.__x_set:
             for y in self.__y_set:
@@ -238,6 +261,46 @@ class Graph:
             return False
         else:
             return True
+
+
+    #znajdz nieodwidzony wierzcholek posiadajacy jedynie krawedzie wychodzace
+    def __find_start_vertice(self, visited, matrix):
+        for col_id in range(len(matrix)):
+            if visited[col_id] == 0:
+                is_ok = True
+                for row in matrix:
+                    if row[col_id] == 1:
+                        is_ok = False
+                        break
+                if is_ok:
+                    return col_id
+        return -1
+
+    def __find_cycle(self, node, visited, stack, matrix):
+        visited[node] = 1
+        stack.append(node)
+        for vertice_id in range(len(matrix)):
+            if matrix[node][vertice_id] == 1:
+                if stack.count(vertice_id) > 0:
+                    return True
+                elif visited[vertice_id] == 0:
+                    result = self.__find_cycle(vertice_id, visited, stack, matrix)
+                    stack.pop()
+                    if result:
+                        return True
+        return False
+
+    def is_acyclic_graph(self, matrix):
+        visited = [0 for x in matrix]
+
+        while visited.count(0) > 0:
+            stack = []
+            start_vertice = self.__find_start_vertice(visited, matrix)
+            if start_vertice < 0:
+                return False
+            if self.__find_cycle(start_vertice, visited, stack, matrix):
+                return False
+        return True
 
 
 
